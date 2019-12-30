@@ -1,4 +1,19 @@
-import org.apache.commons.lang3.SystemUtils
+/*
+ * Copyright (C) 2007-2019 Crafter Software Corporation. All Rights Reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 import org.apache.commons.text.StringEscapeUtils
 import org.apache.commons.io.input.Tailer
 import org.apache.commons.io.input.TailerListenerAdapter
@@ -17,7 +32,6 @@ buildscript {
         classpath group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
         classpath group: 'commons-io', name: 'commons-io', version: '2.6'
         classpath 'org.ajoberstar:grgit:1.1.0'
-
     }
 }
 
@@ -25,135 +39,102 @@ plugins {
     id "de.undercouch.download" version "3.1.2"
 }
 
-project.version = "3.0.16" // craftercms version flag
-
-def isWin = System.getProperty('os.name').toLowerCase().contains('windows')
-
-def commandLinePrefix = []
-def startUpFile = "./startup.sh"
-def shutDownFile = "./shutdown.sh"
-if (isWin) {
-    startUpFile = "startup.bat"
-    shutDownFile = "shutdown.bat"
-    commandLinePrefix = ["cmd", "/c"]
-}
+project.version = "3.1.4" // craftercms version flag
 
 ext {
+    commandLinePrefix = []
+    startUpFile = project.hasProperty("debug") ? "./debug.sh" : "./startup.sh"
+    shutDownFile = "./shutdown.sh"
 
     /** Subprocess Properties **/
     processLogFile = ".gradle.log"
     processTailReadDelay = 100
     processTailFinishDelay = 1000
 
-    /** Unzip Properties **/
+    /** Download Properties **/
     groovyVersion = project.hasProperty("groovy.version") ? project.property("groovy.version") : "2.5.0"
     tomcatVersion = project.hasProperty("tomcat.version") ? project.property("tomcat.version") : "8.5.24"
-    solrVersion = project.hasProperty("solr.version") ? project.property("solr.version") : "6.6.5"
-    mariadb4jVersion = project.hasProperty("mariadb4j.version") ? project.property("mariadb4j.version") : "2.2.7"
+    solrVersion = project.hasProperty("solr.version") ? project.property("solr.version") : "7.7.1"
+    elasticsearchVersion = project.hasProperty("elasticsearch.version") ? project.property("elasticsearch.version") : "6.6.0"
+    mariadb4jVersion = project.hasProperty("mariadb4j.version") ? project.property("mariadb4j.version") : "2.4.2.3"
     downloadDir = project.hasProperty("downloadDir") ? project.property("downloadDir") : "./downloads/"
+    
     /** Environment Building properties **/
-    authEnv = project.hasProperty("authoring.root") ? project.property("authoring.root") : "./crafter-authoring/"
-    deliveryEnv = project.hasProperty("delivery.root") ? project.property("delivery.root") : "./crafter-delivery/"
-    includeProfile = project.hasProperty("crafter.profile") ? project.property("crafter.profile") : false
-    includeSocial = project.hasProperty("crafter.social") ? project.property("crafter.social") : false
+    authEnvDir = project.hasProperty("authoring.root") ? project.property("authoring.root") : "./crafter-authoring/"
+    deliveryEnvDir = project.hasProperty("delivery.root") ? project.property("delivery.root") : "./crafter-delivery/"
+    authProcessedResourcesDir = "./tmp/crafter-authoring"
+    deliveryProcessedResourcesDir = "./tmp/crafter-delivery"
+    includeProfile = project.hasProperty("crafter.profile") ? project.property("crafter.profile").toBoolean() : false
+    includeSocial = project.hasProperty("crafter.social") ? project.property("crafter.social").toBoolean() : false
 
-    /** Social Need Profile **/
+    /** Social needs Profile **/
     if (includeSocial) {
         includeProfile = true
     }
 
-
-    if (project.hasProperty("debug")) {
-        startUpFile = "./debug.sh"
-        if (isWin) {
-            startUpFile = "debug.bat"
-        }
-    }
-
-    //Authoring
-    authTomcatPort = project.hasProperty("authoring.tomcat.http.port") ? project.property("authoring.tomcat.http.port") : 8080
-    authTomcatShutdownPort = project.hasProperty("authoring.tomcat.shutdown.port") ? project.property("authoring.tomcat.shutdown.port") : 8005
-    authTomcatAJPPort = project.hasProperty("authoring.tomcat.ajp.port") ? project.property("authoring.tomcat.ajp.port") : 8009
-    authTomcatSSLPort = project.hasProperty("authoring.tomcat.https.port") ? project.property("authoring.tomcat.https.port") : 8443
-    authTomcatDebug = project.hasProperty("authoring.tomcat.debug.port") ? project.property("authoring.tomcat.debug.port") : 8000
-    authMongoDBPort = project.hasProperty("authoring.mongo.port") ? project.property("authoring.mongo.port") : 27020
-    authSolrPort = project.hasProperty("authoring.solr.port") ? project.property("authoring.solr.port") : 8694
-    authSolrDebugPort = project.hasProperty("authoring.solr.debug.port") ? project.property("authoring.solr.debug.port") : 5005
-    authSMTPPort = project.hasProperty("authoring.studio.smtp.port") ? project.property("authoring.studio.smtp.port") : 25
-    authMariaDbPort = project.hasProperty("authoring.mariadb.port") ? project.property("authoring.mariadb.port") : 33306
-
-    authDeployerPort = project.hasProperty("authoring.deployer.port") ? project.property("authoring.deployer.port") : 9191
-    authDeployerDebugPort = project.hasProperty("authoring.deployer.debug.port") ? project.property("authoring.deployer.debug.port") : 5000
+    // Authoring
+    authTomcatPort = project.hasProperty("authoring.tomcat.http.port") ? project.property("authoring.tomcat.http.port").toInteger() : 8080
+    authTomcatShutdownPort = project.hasProperty("authoring.tomcat.shutdown.port") ? project.property("authoring.tomcat.shutdown.port").toInteger() : 8005
+    authTomcatAJPPort = project.hasProperty("authoring.tomcat.ajp.port") ? project.property("authoring.tomcat.ajp.port").toInteger() : 8009
+    authTomcatSSLPort = project.hasProperty("authoring.tomcat.https.port") ? project.property("authoring.tomcat.https.port").toInteger() : 8443
+    authTomcatDebugPort = project.hasProperty("authoring.tomcat.debug.port") ? project.property("authoring.tomcat.debug.port").toInteger() : 8000
+    authMongoDBPort = project.hasProperty("authoring.mongo.port") ? project.property("authoring.mongo.port").toInteger() : 27020
+    authSolrPort = project.hasProperty("authoring.solr.port") ? project.property("authoring.solr.port").toInteger() : 8694
+    authSolrDebugPort = project.hasProperty("authoring.solr.debug.port") ? project.property("authoring.solr.debug.port").toInteger() : 5005
+    authElasticsearchPort = project.hasProperty("authoring.elasticsearch.port") ? project.property("authoring.elasticsearch.port").toInteger() : 9201
+    authSMTPPort = project.hasProperty("authoring.studio.smtp.port") ? project.property("authoring.studio.smtp.port").toInteger() : 25
+    authMariaDbPort = project.hasProperty("authoring.mariadb.port") ? project.property("authoring.mariadb.port").toInteger() : 33306
+    authDeployerPort = project.hasProperty("authoring.deployer.port") ? project.property("authoring.deployer.port").toInteger() : 9191
+    authDeployerDebugPort = project.hasProperty("authoring.deployer.debug.port") ? project.property("authoring.deployer.debug.port").toInteger() : 5000
     authDeploymentDir = project.hasProperty("authoring.deployment.dir") ? project.property("authoring.deployment.dir") : "data/repos/sites"
 
     // Delivery
-    deliverySolrPort = project.hasProperty("delivery.solr.port") ? project.property("delivery.solr.port") : 8695
-    deliverySolrDebugPort = project.hasProperty("delivery.solr.debug.port") ? project.property("delivery.solr.debug.port") : 5006
-
-    deliveryDeployerPort = project.hasProperty("delivery.deployer.port") ? project.property("delivery.deployer.port") : 9192
-    deliveryDeployerDebugPort = project.hasProperty("delivery.deployer.debug.port") ? project.property("delivery.deployer.debug.port") : 5001
+    deliverySolrPort = project.hasProperty("delivery.solr.port") ? project.property("delivery.solr.port").toInteger() : 8695
+    deliverySolrDebugPort = project.hasProperty("delivery.solr.debug.port") ? project.property("delivery.solr.debug.port").toInteger() : 5006
+    deliveryElasticsearchPort = project.hasProperty("delivery.elasticsearch.port") ? project.property("delivery.elasticsearch.port").toInteger() : 9202
+    deliveryDeployerPort = project.hasProperty("delivery.deployer.port") ? project.property("delivery.deployer.port").toInteger() : 9192
+    deliveryDeployerDebugPort = project.hasProperty("delivery.deployer.debug.port") ? project.property("delivery.deployer.debug.port").toInteger() : 5001
     deliveryDeploymentDir = project.hasProperty("delivery.deployment.dir") ? project.property("delivery.deployment.dir") : "data/repos/sites"
-
-    deliveryTomcatPort = project.hasProperty("delivery.tomcat.http.port") ? project.property("delivery.tomcat.http.port") : 9080
-    deliveryTomcatShutdownPort = project.hasProperty("delivery.tomcat.shutdown.port") ? project.property("delivery.tomcat.shutdown.port") : 9005
-    deliveryTomcatAJPPort = project.hasProperty("delivery.tomcat.ajp.port") ? project.property("delivery.tomcat.ajp.port") : 9009
-    deliveryTomcatSSLPort = project.hasProperty("delivery.tomcat.https.port") ? project.property("delivery.tomcat.https.port") : 9443
-    deliveryTomcatDebugPort = project.hasProperty("delivery.tomcat.debug.port") ? project.property("delivery.tomcat.debug.port") : 9000
-    deliveryMongoDBPort = project.hasProperty("delivery.mongodb.port") ? project.property("delivery.mongodb.port") : 28020
+    deliveryTomcatPort = project.hasProperty("delivery.tomcat.http.port") ? project.property("delivery.tomcat.http.port").toInteger(): 9080
+    deliveryTomcatShutdownPort = project.hasProperty("delivery.tomcat.shutdown.port") ? project.property("delivery.tomcat.shutdown.port").toInteger() : 9005
+    deliveryTomcatAJPPort = project.hasProperty("delivery.tomcat.ajp.port") ? project.property("delivery.tomcat.ajp.port").toInteger() : 9009
+    deliveryTomcatSSLPort = project.hasProperty("delivery.tomcat.https.port") ? project.property("delivery.tomcat.https.port").toInteger() : 9443
+    deliveryTomcatDebugPort = project.hasProperty("delivery.tomcat.debug.port") ? project.property("delivery.tomcat.debug.port").toInteger() : 9000
+    deliveryMongoDBPort = project.hasProperty("delivery.mongodb.port") ? project.property("delivery.mongodb.port").toInteger() : 28020
+    deliverySMTPPort = project.hasProperty("delivery.studio.smtp.port") ? project.property("delivery.studio.smtp.port").toInteger() : 25
 
     /** Git properties **/
     gitURLTemplate = project.hasProperty("crafter.git.url") ? project.property("crafter.git.url") : "https://github.com/craftercms/"
     gitSourceBranch = project.hasProperty("crafter.git.branch") ? project.property("crafter.git.branch") : "master" // craftercms branch flag
     gitRepo = project.hasProperty("crafter.git.remote") ? project.property("crafter.git.remote") : "origin"
-    shallowClone = project.hasProperty("crafter.git.shallowClone") ? project.property("crafter.git.shallowClone") : false
-    studioUIFromRepo = project.hasProperty("crafter.ui.repo") ? project.property("crafter.ui.repo") : false
-    forceDeploy = project.hasProperty("forceDeploy") ? project.property("forceDeploy") : false
-    keepBin = project.hasProperty("keepBin") ? project.property("keepBin") : false
-
-    testingPlatform = project.hasProperty("crafter.testing.platform") ? project.property("crafter.testing.platform") : System.properties['os.name'].toString().toLowerCase().replaceAll(" ", "-")
-    chromeDriverVersion = project.hasProperty("crafter.testing.chrome") ? project.property("crafter.testing.chrome") : 2.40
-    browserToTest = project.hasProperty("crafter.testing.browser") ? project.property("crafter.testing.browser") : "chrome"
-    testArtifacts = project.hasProperty("crafter.unittest") ? project.property("crafter.unittest") : false
-
-    testingSuites = project.hasProperty("crafter.testing.suites") ? project.property("crafter.testing.suites") :
-            "src/test/resources/testng_SanityTest.xml"+
-                ",src/test/resources/testng_StudioAccountManagement.xml"+
-                ",src/test/resources/testng_StudioContent.xml" +
-                ",src/test/resources/testng_StudioContextualNavigation.xml"+
-                ",src/test/resources/testng_StudioSiteDropdown.xml"+
-                ",src/test/resources/testng_StudioDashboard.xml"+
-                ",src/test/resources/testng_StudioGeneral.xml"+
-                ",src/test/resources/testng_StudioPreviewTools.xml"+
-                ",src/test/resources/testng_StudioSiteConfig.xml"+
-                ",src/test/resources/testng_StudioSites.xml"+
-                ",src/test/resources/testng_StudioUsers.xml"+
-                ",src/test/resources/testng_StudioLoginLogout.xml"+
-                ",src/test/resources/testng_StudioAPI.xml"
-
-    startMongodb = project.hasProperty("startMongodb") ? project.property("startMongodb") : false // Does not really.
-    silentBuild = project.hasProperty("crafter.build.silent") ? project.property("crafter.build.silent") : false
-    typeOfBundle = project.hasProperty("crafter.bundle.archive") ? project.property("crafter.bundle.archive") : "both"
-
+    shallowClone = project.hasProperty("crafter.git.shallowClone") ? project.property("crafter.git.shallowClone").toBoolean() : false
+    studioUIFromRepo = project.hasProperty("crafter.ui.repo") ? project.property("crafter.ui.repo").toBoolean() : false
+    
+    /** Other **/
+    overwriteConfig = project.hasProperty("overwriteConfig") ? project.property("overwriteConfig").toBoolean() : false
+    backupAndReplaceConfig = project.hasProperty("backupAndReplaceConfig") ? project.property("backupAndReplaceConfig").toBoolean() : false
+    
+    /** Testing **/
+    testArtifacts = project.hasProperty("crafter.unittest") ? project.property("crafter.unittest").toBoolean() : false
+    
+    startMongodb = project.hasProperty("startMongodb") ? project.property("startMongodb").toBoolean() : false // TODO:: cleanup
+    withElasticsearch = project.hasProperty("withElasticsearch") ? project.property("withElasticsearch").toBoolean() : true // TODO:: cleanup
+    withSolr = project.hasProperty("withSolr") ? project.property("withSolr").toBoolean() : false
+    silentBuild = project.hasProperty("crafter.build.silent") ? project.property("crafter.build.silent").toBoolean() : false // TODO:: cleanup
+    typeOfBundle = project.hasProperty("crafter.bundle.archive") ? project.property("crafter.bundle.archive") : "both" // TODO:: cleanup
+   
     /** Cloneable Artifacts **/
-    VALID_MODULES = ["commons", "core", "search", "profile", "engine", "deployer", "studio", "social", "studio-ui", "test-suite", "plugin-maker"]
+    VALID_MODULES =
+      ["commons", "core", "search", "profile", "engine", "deployer", "studio", "social", "studio-ui", "plugin-maker"]
 
     /** Deployable Artifacts **/
     VALID_DEPLOYABLE_MODULES = [
-            "search"  : "./src/search/crafter-search-server/target/crafter-search.war",
+            "search"  : "./src/search/crafter-search-solr-server/target/crafter-search.war",
             "profile" : "./src/profile/server/target/crafter-profile.war",
             "engine"  : "./src/engine/target/ROOT.war",
-            "deployer": "./src/deployer/target/crafter-deployer-exec.jar",
+            "deployer": "./src/deployer/target/crafter-deployer.jar",
             "studio"  : "./src/studio/target/studio.war",
             "social"  : "./src/social/server/target/crafter-social.war"]
-    WINDOWS_EDGE_DRIVER_URL = [
-            "16299": "https://download.microsoft.com/download/D/4/1/D417998A-58EE-4EFE-A7CC-39EF9E020768/MicrosoftWebDriver.exe",
-            "15063": "https://download.microsoft.com/download/3/4/2/342316D7-EBE0-4F10-ABA2-AE8E0CDF36DD/MicrosoftWebDriver.exe",
-            "14393": "https://download.microsoft.com/download/3/2/D/32D3E464-F2EF-490F-841B-05D53C848D15/MicrosoftWebDriver.exe",
-            "10586": "https://download.microsoft.com/download/C/0/7/C07EBF21-5305-4EC8-83B1-A6FCC8F93F45/MicrosoftWebDriver.msi",
-            "10240": "https://download.microsoft.com/download/8/D/0/8D0D08CF-790D-4586-B726-C6469A9ED49C/MicrosoftWebDriver.msi"
-
-    ]
-    WINDOWS_IE_DRIVER_URL= "http://selenium-release.storage.googleapis.com/3.8/IEDriverServer_x64_3.8.0.zip"
 
     git = org.ajoberstar.grgit.Grgit.open(dir: ".")
     gitRevisionId = git.head().id.substring(0, 6)
@@ -161,9 +142,9 @@ ext {
 
 apply from: "downloads.gradle"
 apply from: "environments.gradle"
+apply from: "dockers.gradle"
 
-
-def deliveryDeps = []
+def deployDepends = []
 def cleanDeps = []
 def buildDeps = []
 def initDeps = []
@@ -171,7 +152,6 @@ def updateDeps = []
 def startDeps = []
 def stopDeps = []
 def statusDeps = []
-def preTestDeps = browserToTest.equalsIgnoreCase("chrome") ? [downloadChromeDriver] : [downloadEdgeDriver,downloadIEDriver]
 def bundleDeps = []
 def envs = []
 def envDepends = []
@@ -184,7 +164,7 @@ if (getEnv().equalsIgnoreCase("all")) {
     envDepends = [tasks.findByName("${getEnv()}Environment")]
 }
 
-/** Some blackmagic here and there creates module_build tasks **/
+/** Create module_build tasks **/
 def buildModules = []
 def deployModules = [:]
 if (project.hasProperty("moduleName")) {
@@ -198,7 +178,6 @@ if (project.hasProperty("moduleName")) {
 }
 
 buildModules.each { module ->
-
     // Creates the Clean Task
     if (!tasks.findByPath("${module}_clean")) {
         task "${module}_clean" doLast({
@@ -211,35 +190,34 @@ buildModules.each { module ->
 
     // Creates the Build Tasks
     if (!tasks.findByPath("${module}_build")) {
-        if (!module.equalsIgnoreCase("test-suite")) {
-            task "${module}_build" doLast({
-                def actualCommandLinePost = [];
-                if (!testArtifacts) {
-                    actualCommandLinePost.add("-Dmaven.test.skip=true")
+        task "${module}_build" doLast({
+            def actualCommandLinePost = [];
+            if (!testArtifacts) {
+                actualCommandLinePost.add("-Dmaven.test.skip=true")
+            }
+            if (module.equalsIgnoreCase("search")) {
+                actualCommandLinePost.add("-pl")
+                actualCommandLinePost.add("!crafter-search-solr-itest")
+            } else if (module.equalsIgnoreCase("profile")) {
+                actualCommandLinePost.add("-pl")
+                if (!includeProfile) {
+                    actualCommandLinePost.add("!admin-console,!integration-tests,!server")
+                } else {
+                    actualCommandLinePost.add("!integration-tests")
                 }
-                if (module.equalsIgnoreCase("search")) {
-                    actualCommandLinePost.add("-pl")
-                    actualCommandLinePost.add("!crafter-search-itest")
-                } else if (module.equalsIgnoreCase("profile")) {
-                    actualCommandLinePost.add("-pl")
-                    if (!includeProfile) {
-                        actualCommandLinePost.add("!admin-console,!integration-tests,!server")
-                    } else {
-                        actualCommandLinePost.add("!integration-tests")
-                    }
-                }
-                if (module.equalsIgnoreCase("studio") && !studioUIFromRepo) {
-                    actualCommandLinePost.add("-Dstudio.ui.path=../studio-ui/".toString())
-                    actualCommandLinePost.add("-Dexec.skip=true")
-                }
-                def array = commandLinePrefix + ["mvn", "install"] + actualCommandLinePost
-                executeProcess(array, "./src/${module}".toString())
-            })
-            // Creates the Dependencies Array
-            def buildTask = tasks.findByName("${module}_build")
-            buildTask.description "Builds and installs locally ${module} module"
-            buildDeps.add(buildTask)
-        }
+            }
+            if (module.equalsIgnoreCase("studio") && !studioUIFromRepo) {
+                actualCommandLinePost.add("-Dstudio.ui.path=../studio-ui/".toString())
+                actualCommandLinePost.add("-Dexec.skip=true")
+            }
+            def array = commandLinePrefix + ["mvn", "install"] + actualCommandLinePost
+            executeProcess(array, "./src/${module}".toString())
+        })
+        // Creates the Dependencies Array
+        def buildTask = tasks.findByName("${module}_build")
+        buildTask.description "Builds and installs locally ${module} module"
+        buildDeps.add(buildTask)
+
         // Create init tasks
         task "${module}_init" doLast {
             def finalUrl = "${gitURLTemplate}${module}.git".toString()
@@ -258,6 +236,7 @@ buildModules.each { module ->
                 executeProcess(arry, ".")
             }
         }
+
         //Creates Update Tasks
         task "${module}_update" doLast {
             if (!file("./src/${module}").exists()) {
@@ -278,15 +257,13 @@ buildModules.each { module ->
         def updateTask = tasks.findByName("${module}_update")
         updateTask.description "Updates from ${gitRepo} branch ${gitSourceBranch} the module ${module}"
         updateDeps.add(updateTask)
-
     } else {
         logger.debug("Task ${module}_build already exists")
     }
 }
 
-
 envs.each { env ->
-// Creates the deploy tasks
+    // Creates the deploy tasks
     deployModules.keySet().each { module ->
         if (!(env.equalsIgnoreCase("delivery") && module.equalsIgnoreCase("studio"))) {
             if (!tasks.findByName("${module}_${env}_deploy")) {
@@ -301,12 +278,13 @@ envs.each { env ->
                 })
                 def deployTask = tasks.findByName("${module}_${env}_deploy")
                 deployTask.description "Deploy ${module} in the ${env} enviroment"
-                deliveryDeps.add(deployTask)
+                deployDepends.add(deployTask)
             } else {
                 logger.debug("Task ${module}_deploy already exists")
             }
         }
     }
+    
     /* Per Env tasks */
     if (!tasks.findByName("${env}_start")) {
         task "${env}_start" doLast({
@@ -314,20 +292,27 @@ envs.each { env ->
             if (startMongodb) {
                 extraStartupParams.add("forceMongo")
             }
-            def path = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
+            if (!withElasticsearch) {
+              extraStartupParams.add("skipElasticsearch")
+            }
+            if (withSolr) {
+              extraStartupParams.add("withSolr")
+            }
+            def path = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
             if (!file(path).exists()) {
                 throw new InvalidUserDataException("The '${env}' enviroment is not deployed. Please run 'deploy -Penv=${env}' before 'start'.")
             }
             executeProcess(commandLinePrefix + [startUpFile] + extraStartupParams, "${path}/bin")
         })
     }
+
     if (!tasks.findByName("${env}_stop")) {
         task "${env}_stop" doLast({
             def extraStartupParams = []
             if (startMongodb) {
                 extraStartupParams.add("forceMongo")
             }
-            def path = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
+            def path = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
             if (!file(path).exists()) {
                 throw new InvalidUserDataException("The '${env}' enviroment is not deployed. Please run 'deploy -Penv=${env}' before 'start'.")
             }
@@ -335,13 +320,13 @@ envs.each { env ->
         })
     }
 
-    if (!tasks.findByName("${env}_status") && !isWin) {
+    if (!tasks.findByName("${env}_status")) {
         task "${env}_status" doLast({
             def extraStartupParams = []
             if (startMongodb) {
                 extraStartupParams.add("forceMongo")
             }
-            def path = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
+            def path = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
             if (!file(path).exists()) {
                 throw new InvalidUserDataException("The '${env}' enviroment is not deployed. Please run 'deploy -Penv=${env}' before 'start'.")
             }
@@ -349,33 +334,14 @@ envs.each { env ->
         })
     }
 
-
-    if (!tasks.findByName("${env}_bundle_zip")) {
-        task "${env}_bundle_zip"(type: Zip) {
-            description "Bundles as a Zip file ${env} enviroment"
-            def environmentPath = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
-            from(environmentPath) {
-                into("crafter")
-            }
-            archiveName "crafter-cms-${env}.zip"
-            fileMode null
-            dirMode null
-            includeEmptyDirs true
-            metadataCharset "UTF-8"
-            caseSensitive false
-            destinationDir(file("bundles/"))
-            zip64 true
-        }
-    }
-
     if (!tasks.findByName("${env}_bundle_tar")) {
         task "${env}_bundle_tar"(type: Tar) {
             description "Bundles as a Tar file ${env} enviroment"
-            def environmentPath = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
+            def environmentPath = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
             from(environmentPath) {
                 into("crafter")
             }
-            archiveName "crafter-cms-${env}.tar.gz"
+            archiveName "crafter-cms-${env}-${project.version}.tar.gz"
             fileMode null
             dirMode null
             includeEmptyDirs true
@@ -386,17 +352,14 @@ envs.each { env ->
     }
 
     switch (typeOfBundle.toLowerCase()) {
-        case "zip":
-            bundleDeps.add(tasks.findByName("${env}_bundle_zip"))
-            break;
         case "tar":
             bundleDeps.add(tasks.findByName("${env}_bundle_tar"))
             break;
         default:
-            bundleDeps.add(tasks.findByName("${env}_bundle_zip"))
             bundleDeps.add(tasks.findByName("${env}_bundle_tar"))
             break;
     }
+
     statusDeps.add(tasks.findByName("${env}_status"))
     stopDeps.add(tasks.findByName("${env}_stop"))
     startDeps.add(tasks.findByName("${env}_start"))
@@ -407,47 +370,31 @@ buildDeps.removeAll([
   tasks.findByName("studio-ui_build"),
   tasks.findByName("plugin-maker_build")
 ] as Task[])
+
 cleanDeps.removeAll([
   tasks.findByName("studio-ui_clean"),
-  tasks.findByName("plugin-maker_clean"),
-  tasks.findByName("test-suite_build")
+  tasks.findByName("plugin-maker_clean")
 ] as Task[])
 
 if (!includeSocial) {
     buildDeps.removeAll([tasks.findByName('social_build')] as Task[])
-    deliveryDeps.removeIf({
+    deployDepends.removeIf({
         it.name.contains("social")
     })
 }
 
 if (!includeProfile) {
-    deliveryDeps.removeIf({
+    deployDepends.removeIf({
         it.name.contains("profile")
     })
 }
 
-task selftest {
-    description "Selftest gradle script."
-    doLast {
-        def selftestScript="initialSetupCheckForTestScript"
-        if (isWin) {
-            selftestScript+=".bat"
-        } else {
-            selftestScript = "./"+selftestScript+".sh"
-        }
-        def array = commandLinePrefix + [selftestScript]
-        executeProcess(array, "./src/test-suite")
-    }
-}
-
 task clean() {
-    //Dummy task Builds used as dependency of other tasks
     description "Clean all configured Crafter Modules"
 }
 
 task build() {
     description "Builds all configured Crafter Modules"
-    //Dummy task Builds used as dependency of other tasks
 }
 
 task init(dependsOn: initDeps) {
@@ -461,30 +408,34 @@ task update(dependsOn: updateDeps) {
 task upgrade() {
     description "Delete all enviroment information (keeps the site data,db and indexes), update builds and deploy a new enviroment."
 }
+
 task deploy() {
     description "Deploys all configured Crafter Modules"
 }
+
 task bundle(dependsOn: bundleDeps) {
-    description "Zips and Tars all Crafter enviroments."
+    description "Tars all Crafter enviroments."
 }
+
 task start(dependsOn: startDeps) {
     description "Starts configured Crafter enviroments.."
-
 }
+
 task stop(dependsOn: stopDeps) {
     description "Stops configured Crafter enviroments.."
 }
+
 task status(dependsOn: statusDeps) {
     description "Gets the status configured Crafter enviroments.."
 }
 
-task utils() {
-    description "Builds and deploys Crafter Utililty tools jar file."
+task buildUtils() {
+    description "Builds and deploys Crafter CMS Bundle Utility tools jar file."
     doLast {
         def array = commandLinePrefix + ["mvn", "clean", "package"]
         executeProcess(array, "./utils/")
         envs.each { env ->
-            def path = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
+            def path = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
             copy {
                 from "./utils/target/craftercms-utils.jar"
                 into "${path}/bin"
@@ -492,57 +443,6 @@ task utils() {
         }
     }
 }
-
-task preUpgrade {
-    def enviroments = []
-    doFirst {
-        switch (getEnv()) {
-            case "all":
-                enviroments.addAll([new File("${authEnv}"), new File("${deliveryEnv}")])
-                break
-            case "authoring":
-                enviroments.add(new File("${authEnv}"))
-                break
-            case "delivery":
-                enviroments.add(new File("${deliveryEnv}"))
-                break
-            default:
-                throw new InvalidUserDataException("'${env}' is not a valid environment, please use 'authoring' or 'delivery'.")
-        }
-    }
-
-    doLast {
-        enviroments.each { envFolder ->
-            if (envFolder.exists()) {
-                envFolder.eachFile { dir ->
-                    if (!dir.getName().equalsIgnoreCase("data")) {
-                        if (!dir.isFile()) {
-                            dir.deleteDir()
-                        } else {
-                            dir.delete()
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-
-task preDeploy {
-    doLast {
-        if (getEnv().equalsIgnoreCase("all")) {
-            checkOrCreateCheck("${authEnv}")
-            checkOrCreateCheck("${deliveryEnv}")
-        } else {
-            def path = env.equalsIgnoreCase("authoring") ? "${authEnv}" : "${deliveryEnv}"
-            checkOrCreateCheck(path)
-        }
-    }
-}
-
-
 
 task selfupdate {
     description "Updates the Crafter CMS project"
@@ -552,89 +452,9 @@ task selfupdate {
     }
 }
 
-task preTest(dependsOn: preTestDeps) {
-    def repoFolder = file("${authEnv}/data/repos/sites")
-    def driverPath = ""
-    doFirst {
-        switch (browserToTest.toString().toLowerCase()) {
-            case "chrome":
-                if (SystemUtils.IS_OS_WINDOWS) {
-                    driverPath = file("./src/test-suite/bin/${browserToTest}-${testingPlatform}/chromedriver.exe")
-                } else {
-                    driverPath = file("./src/test-suite/bin/${browserToTest}-${testingPlatform}/chromedriver")
-                }
-                break;
-            case "edge":
-                driverPath = file("./src/test-suite/bin/${browserToTest}/MicrosoftWebDriver.exe")
-                break
-            case "ie":
-                driverPath = file("./src/test-suite/bin/ie-win/IEDriverServer.exe")
-                break
-            default:
-                driverPath = askForPath();
-        }
-
-        if (!file("./src/test-suite/test-properties.properties").exists()) {
-            def properties = []
-            properties.add("webBrowser=${browserToTest}")
-            properties.add("baseUrl=http://localhost:8080/studio/#/login")
-            properties.add("${browserToTest}.driver.path=${StringEscapeUtils.escapeJava(file(driverPath).absolutePath)}")
-            properties.add("deliverybaseUrl=http://localhost:9080/")
-
-            if (SystemUtils.IS_OS_WINDOWS) {
-                properties.add("executionenvironment=windows")
-            } else {
-                properties.add("executionenvironment=unix")
-            }
-
-            Files.write(Paths.get("./src/test-suite/test-properties.properties"), properties, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-        }
-
-        // Exists, is a folder and has sites
-        if (repoFolder.exists() && repoFolder.isDirectory() && (repoFolder.listFiles().length > 0)) {
-            def dataFolderSuffix = "-${new Date().format("YYYYMMdd")}-${UUID.randomUUID().toString()}"
-
-            logger.lifecycle("About to begin automatic testing suite")
-            logger.lifecycle("Current Data folder will be move to data_${dataFolderSuffix}")
-            logger.lifecycle("It will move it back when done ")
-            sleep(5 * 1000)
-            repoFolder.parentFile.parentFile.renameTo(repoFolder.parentFile.parentFile.absolutePath + dataFolderSuffix)
-            repoFolder.parentFile.parentFile.mkdir()
-            Files.write(Paths.get(repoFolder.parentFile.parentFile.absolutePath, "_btbk.txt"), [dataFolderSuffix], StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-        }
-    }
-}
-
-
-task postTest {
-    def repoFolder = file("${authEnv}/data/repos/sites")
-    def folderSuffixCacheFile = Paths.get(repoFolder.parentFile.parentFile.absolutePath, "_btbk.txt").toFile()
-    if (folderSuffixCacheFile.exists()) {
-        logger.lifecycle("Moving back pre-test data")
-        logger.lifecycle("Test data was backup in the folder ${folderSuffixCacheFile.toString()}")
-        logger.lifecycle("This folder can be safely remove if needed.")
-        def dataFolderSufix = Files.readAllLines(folderSuffixCacheFile.toPath(), Charset.forName("UTF-8")).get(0)
-        def backupedFolder = file(repoFolder.parentFile.parentFile.absolutePath + dataFolderSufix)
-        if (backupedFolder.exists()) {
-            repoFolder.parentFile.parentFile.renameTo(repoFolder.parentFile.parentFile.absolutePath +
-                    "$dataFolderSufix-td")
-            backupedFolder.renameTo(Paths.get(backupedFolder.parentFile.absolutePath, "data").toString())
-        }
-    }
-}
-
 task delay {
     doLast {
         sleep(30 * 1000)
-    }
-}
-
-task test() {
-    description "Tests Crafter CMS."
-    doLast {
-        def actualCommandLinePost = ["-Dfile=" + testingSuites]
-        def array = commandLinePrefix + ["mvn", "clean", "install"] + actualCommandLinePost
-        executeProcess(array, "./src/test-suite")
     }
 }
 
@@ -665,24 +485,39 @@ task publishPlugin(type: GradleBuild) {
   startParameter.projectProperties = project.getGradle().getStartParameter().getProjectProperties()
 }
 
+task dockers() {
+    description "Builds the Docker images"
+}
+
+def dockerDepends = []
+
+if (getEnv().equalsIgnoreCase("all")) {
+    dockerDepends = [buildAuthoringDockers, buildDeliveryDockers]
+
+    if (!file(authEnvDir).exists() || !file(deliveryEnvDir).exists()) {
+        dockerDepends = [deploy] + dockerDepends
+    }
+} else {
+    dockerDepends = [tasks.findByName("build${upperCaseFirstLetter(getEnv())}Dockers")]
+
+    def envDir = env.equalsIgnoreCase("authoring") ? "${authEnvDir}" : "${deliveryEnvDir}"
+    if (!file(envDir).exists()) {
+        dockerDepends = [deploy] + dockerDepends
+    }    
+}
+
 /** Makes sure Depends are run in order. **/
 dependsOnOrdered(clean, cleanDeps)
 dependsOnOrdered(build, [clean] + buildDeps)
 dependsOnOrdered(init, initDeps)
 dependsOnOrdered(update, updateDeps)
-dependsOnOrdered(deploy, [preDeploy, downloadGroovy, downloadTomcat, downloadSolr, downloadMariaDB4j, utils] + envDepends + deliveryDeps)
-dependsOnOrdered(upgrade, [update, preUpgrade, build, deploy])
-
-// If delivery no test (for now)
-if (!project.hasProperty("env") || (project.hasProperty("env") && !project.property("env").equalsIgnoreCase("delivery"))) {
-    dependsOnOrdered(test, [preTest, authoring_start, delay])
-    test.finalizedBy(authoring_stop)
-    test.finalizedBy(postTest)
-}
+dependsOnOrdered(deploy, [downloadGroovy, downloadTomcat, downloadSolr, downloadElasticsearch, downloadMariaDB4j] + envDepends + deployDepends + [buildUtils])
+dependsOnOrdered(upgrade, [update, build, deploy])
+dependsOnOrdered(dockers, dockerDepends)
 
 def deployBinary(deployable, env) {
     if (deployable.exists()) {
-        def path = env.equals("authoring") ? authEnv : deliveryEnv
+        def path = env.equals("authoring") ? authEnvDir : deliveryEnvDir
         path += deployable.absolutePath.endsWith(".jar") ? "bin/crafter-deployer/" : "bin/apache-tomcat/webapps/"
         path += deployable.name
         delete {
@@ -692,7 +527,6 @@ def deployBinary(deployable, env) {
         copy {
             from deployable.absolutePath
             into path.take(path.lastIndexOf('/'))
-            rename('-exec', '')
         }
     } else {
         logger.lifecycle "WARN: You haven't built ${module} module"
@@ -725,25 +559,6 @@ def executeProcess(command, workingDir) {
     }
 }
 
-def checkOrCreateCheck(path) {
-    def ddir = file(path)
-    if (!ddir.exists() || forceDeploy) {
-        ddir.mkdir()
-        def deployerDir = file("${path}/bin/crafter-deployer")
-        deployerDir.mkdir()
-    }
-}
-
-def askForPath() {
-    def console = System.console();
-    def inputPath = console.readLine("> Please enter path for selemiun driver of ${browserToTest} ")
-    if (!file(inputPath).exists()) {
-        console.logger.lifecycle("${inputPath} does not exist, please enter a new valid path");
-        askForPath();
-    }
-    return inputPath
-}
-
 def getModule() {
     if (project.hasProperty("moduleName")) {
         def moduleName = project.property("moduleName")
@@ -762,6 +577,10 @@ def getEnv() {
     } else {
         return "all"
     }
+}
+
+def upperCaseFirstLetter(str) {
+    return str.substring(0, 1).toUpperCase() + str.substring(1)
 }
 
 // Run task in the right order.

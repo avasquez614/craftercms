@@ -3,13 +3,18 @@
 DEPLOYER_HOME=${DEPLOYER_HOME:=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )}
 CRAFTER_HOME=${CRAFTER_HOME:=$( cd "$DEPLOYER_HOME/.." && pwd )}
 CRAFTER_ROOT=${CRAFTER_ROOT:=$( cd "$CRAFTER_HOME/.." && pwd )}
-LOGS_DIR=${DEPLOYER_LOGS_DIR:="$CRAFTER_ROOT/logs/deployer"}
-DATA_DIR=${DEPLOYER_DATA_DIR:="$CRAFTER_ROOT/data/deployer"}
-DEPLOYMENTS_DIR=${DEPLOYER_DEPLOYMENTS_DIR:="$CRAFTER_ROOT/data/repos/sites"}
+LOGS_DIR=${DEPLOYER_LOGS_DIR:="$CRAFTER_LOGS_DIR/deployer"}
+DATA_DIR=${DEPLOYER_DATA_DIR:="$CRAFTER_DATA_DIR/deployer"}
+DEPLOYMENTS_DIR=${DEPLOYER_DEPLOYMENTS_DIR:="$CRAFTER_DATA_DIR/repos/sites"}
 TARGETS_DIR=$DATA_DIR/targets
 PROCESSED_COMMITS=$DATA_DIR/processed-commits
 PORT=${DEPLOYER_PORT:="9191"}
-JAVA_OPTS="$DEPLOYER_JAVA_OPTS -Dserver.port=$PORT -Dlogging.config=$DEPLOYER_HOME/logback-spring.xml -Dlogs.dir=$LOGS_DIR -Ddeployments.dir=$DEPLOYMENTS_DIR -Dtargets.dir=$TARGETS_DIR -DprocessedCommits.dir=$PROCESSED_COMMITS -Dloader.path=$DEPLOYER_HOME/lib"
+ENGINE_URL=${ENGINE_URL:="http://localhost:8080"}
+SEARCH_URL=${SEARCH_URL:="http://localhost:8080/crafter-search"}
+ES_URL=${ES_URL:="http://localhost:9200"}
+JAVA_OPTS="$DEPLOYER_JAVA_OPTS -Dserver.port=$PORT -Dlogging.config=$DEPLOYER_HOME/logging.xml -Dlogs.dir=$LOGS_DIR \
+  -Ddeployments.dir=$DEPLOYMENTS_DIR -Dtargets.dir=$TARGETS_DIR -DprocessedCommits.dir=$PROCESSED_COMMITS \
+  -Dloader.path=$DEPLOYER_HOME/lib"
 PID=${DEPLOYER_PID:="$DATA_DIR/crafter-deployer.pid"}
 OUTPUT=${DEPLOYER_SDOUT:="$LOGS_DIR/crafter-deployer.out"}
 
@@ -79,6 +84,10 @@ function start() {
   fi
 }
 
+function run() {
+  java -jar $JAVA_OPTS "$DEPLOYER_HOME/crafter-deployer.jar"
+}
+
 function stop() {
   if [ -s "$PID" ]; then
     killPID $PID
@@ -103,6 +112,9 @@ case $1 in
   ;;
   start)
   start
+  ;;
+  run)
+  run
   ;;
   stop)
   stop

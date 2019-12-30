@@ -1,12 +1,25 @@
 # Crafter CMS
 
-Crafter CMS is an open source content management system for Web sites, mobile apps, VR and more. You can learn more about Crafter here: http://docs.craftercms.org/en/3.0/index.html
+Crafter CMS is a modern content management platform for building digital experience applications including:
+
+* Single Page Applications (SPAs) using frameworks like React, Vue, and Angular
+* Native mobile apps and headless applications (IOT, digital signage, wearables, etc.)
+* HTML5 websites using Bootstrap or other HTML frameworks
+* e-commerce front-ends
+* OTT video experiences on AWS Elemental Media Services
+* AR/VR applications using A-Frame
+
+You can learn more about Crafter here: http://docs.craftercms.org/en/3.1/index.html
 
 This repository is the parent project that builds everything and helps you build one of two things:
 
 1. Deployable Crafter CMS bundle
+2. Docker images
+3. Developer's environment so you can compile and contribute to Crafter CMS
 
-2. Developer's environment so you can compile and contribute to Crafter CMS
+**WARNING:** This project is not intended to be used on Windows. Crafter CMS source code development and building is 
+_only_ supported on Unix based systems. If you want to use Crafter CMS in Windows, please refer to the documentation
+in [Running Crafter CMS in a Docker Container](https://docs.craftercms.org/en/3.1/getting-started/quick-start-guide.html#running-crafter-cms-in-a-docker-container).
 
 # 1. Initial Setup
 You must have these prerequisites on your system before you begin:
@@ -40,11 +53,11 @@ git clone https://github.com/craftercms/craftercms.git -b develop
 
 # 2. Build a Deployable Bundle
 
-To build a deployable and distributable bundle of Crafter CMS, use the Gradle task `bundle`. This task will generate `.zip` and `.tar.gz` files ready to be deployed to any system.
+To build a deployable and distributable bundle of Crafter CMS, use the Gradle task `bundle`. This task will generate `.tar.gz` files ready to be deployed to any system.
 
-Before using `bundle` task make sure that the enviroment have been created and deployed gradle tasks `build` and `deploy`
+Before using `bundle` task make sure that the enviroment has been created and deployed using gradle tasks `build` and `deploy`
 
-Archives will be named `crafter-cms-${environment}.tar.gz` and `crafter-cms-${environment}.zip` and can be found in the `bundles` folder.
+Archives will be named `crafter-cms-${environment}.tar.gz` and can be found in the `bundles` folder.
 
 ```bash
 ./gradlew init build deploy bundle
@@ -60,7 +73,7 @@ To build a bundle for a specific environment:
 ```bash
     ./gradlew bundle -Penv=authoring
 ```
-Archives will be named `crafter-cms-authoring.tar.gz` and `crafter-cms-authoring.zip` and can be found in the `bundles` folder.
+Archive will be named `crafter-cms-authoring.tar.gz` and can be found in the `bundles` folder.
 
 For the `delivery` environment, simply substitute the `env=authoring` with `env=delivery`.
 
@@ -70,7 +83,7 @@ To download, build and generate a bundle from a given tag or branch of the sourc
 
 1. Clone the branch/tag of craftercms that you want to work with
 ```bash
-    git clone -b<branch> https://github.com/craftercms/craftercms/
+    git clone -b <branch> https://github.com/craftercms/craftercms/
 ```
 2. Download, build and bundle the branch that you want to work with
 ```bash
@@ -83,7 +96,7 @@ Replace {BRANCH} or {TAG NAME} or \<branch\> with the branch and tag you'd like 
 When using a tag-based build, you're essentially cloning a point in time to build that specific version of Crafter CMS. That implies that you won't be able to update/nor push changes back.
 
 # 3. Build a Developer's Environment
-Crafter CMS is built along a microservices architecture, and as such, comprises a number of head-less, RESTful, modules that work together to provide the final solution. In this section, we'll start with the simple case of _build everything_/_run everything_, and then move on to building/hacking individual modules.
+Crafter CMS is built along a microservices-based architecture, and as such, comprises a number of headless API-first (GraphQL, REST, in-process)  modules that work together to provide the final solution. In this section, we'll start with the simple case of _build everything_/_run everything_, and then move on to building/hacking individual modules.
 
 
 ## 3.1. Build, Start and Stop All 
@@ -101,7 +114,7 @@ Start Crafter CMS,
     ./gradlew start
 ```
 
-You can now point your browser to [http://localhost:8080/studio](http://localhost:8080/studio) and start using Crafter CMS. To get started with your first Crafter CMS experience, you can follow this guide: [http://docs.craftercms.org/en/3.0/content-authors/index.html](http://docs.craftercms.org/en/3.0/content-authors/index.html).
+You can now point your browser to [http://localhost:8080/studio](http://localhost:8080/studio) and start using Crafter CMS. To get started with your first Crafter CMS experience, you can follow this guide: [http://docs.craftercms.org/en/3.1/content-authors/index.html](http://docs.craftercms.org/en/3.1/content-authors/index.html).
 
 ##### Note
 * The authoring environment runs on port `8080`, a great place to start, while the delivery environment runs on port 
@@ -141,14 +154,14 @@ To build, start and stop one of the two environments is similar to building/star
 The mechanics for working with a single module are similar to working with _all_, with one exception: You can deploy a module to one or both environments (`authoring`/`delivery`).
 
 Crafter CMS comprises the modules:
-* [`core`](http://docs.craftercms.org/en/3.0/developers/projects/core/index.html)
-* [`commons`](http://docs.craftercms.org/en/3.0/developers/projects/commons/index.html)
-* [`engine`](http://docs.craftercms.org/en/3.0/developers/projects/engine/index.html)
-* [`studio`](http://docs.craftercms.org/en/3.0/developers/projects/studio/index.html)
-* [`search`](http://docs.craftercms.org/en/3.0/developers/projects/search/index.html)
-* [`profile`](http://docs.craftercms.org/en/3.0/developers/projects/profile/index.html)
-* [`social`](http://docs.craftercms.org/en/3.0/developers/projects/social/index.html)
-* [`deployer`](http://docs.craftercms.org/en/3.0/developers/projects/deployer/index.html)
+* [`core`](http://docs.craftercms.org/en/3.1/developers/projects/core/index.html)
+* [`commons`](http://docs.craftercms.org/en/3.1/developers/projects/commons/index.html)
+* [`engine`](http://docs.craftercms.org/en/3.1/developers/projects/engine/index.html)
+* [`studio`](http://docs.craftercms.org/en/3.1/developers/projects/studio/index.html)
+* [`search`](http://docs.craftercms.org/en/3.1/developers/projects/search/index.html)
+* [`profile`](http://docs.craftercms.org/en/3.1/developers/projects/profile/index.html)
+* [`social`](http://docs.craftercms.org/en/3.1/developers/projects/social/index.html)
+* [`deployer`](http://docs.craftercms.org/en/3.1/developers/projects/deployer/index.html)
 
 You'll find these projects checked out and ready for you to contribute to in the folder `src/{moduleName}`.
 
@@ -187,4 +200,4 @@ You can update, build, deploy, start or stop a module by:
 * In the current version of Crafter CMS, some services run in the same Web container, and that implies the stopping/starting of one of these services will cause other services to stop/start as well.
 
 # 4. Advanced Topics
-For more detailed information and advanced topic, please visit the [detailed documentation](http://docs.craftercms.org/en/3.0/developers/projects/craftercms/index.html).
+For more detailed information and advanced topic, please visit the [detailed documentation](http://docs.craftercms.org/en/3.1/developers/projects/craftercms/index.html).

@@ -1,4 +1,19 @@
-
+/*
+ * Copyright (C) 2007-2019 Crafter Software Corporation. All Rights Reserved.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 buildscript {
     repositories {
         mavenCentral()
@@ -6,7 +21,6 @@ buildscript {
     dependencies {
         classpath group: 'org.apache.commons', name: 'commons-text', version: '1.1'
         classpath group: 'org.apache.commons', name: 'commons-lang3', version: '3.6'
-
     }
 }
 
@@ -14,8 +28,8 @@ import java.security.MessageDigest;
 import org.apache.commons.lang3.SystemUtils;
 
 task downloadGroovy() {
-    description = "Downloads and checks groovy integrity"
-    doFirst{
+    description = "Downloads, checks Groovy integrity and unzips it"
+    doFirst {
         download {
             src "https://dl.bintray.com/groovy/maven/apache-groovy-binary-${groovyVersion}.zip"
             overwrite false
@@ -27,14 +41,21 @@ task downloadGroovy() {
             overwrite false
         }
     }
-    doLast{
-        assert sha256(new File(downloadDir, "apache-groovy-${groovyVersion}.zip")) ==  new File(downloadDir, "apache-groovy-${groovyVersion}.zip.sha256").getText('UTF-8')
+    doLast {
+        assert sha256(new File(downloadDir, "apache-groovy-${groovyVersion}.zip")) == new File(downloadDir, "apache-groovy-${groovyVersion}.zip.sha256").getText('UTF-8')
+
+        if (!file("${downloadDir}/groovy-${groovyVersion}").exists()) {
+            copy {
+                from zipTree("${downloadDir}/apache-groovy-${groovyVersion}.zip")
+                into "${downloadDir}"
+            }
+        }
     }
 }
 
 task downloadTomcat() {
-    description = "Downloads and checks tomcat integrity"
-    doFirst{
+    description = "Downloads, checks Tomcat integrity and unzips it"
+    doFirst {
         download {
             src "http://archive.apache.org/dist/tomcat/tomcat-8/v${tomcatVersion}/bin/apache-tomcat-${tomcatVersion}.zip"
             overwrite false
@@ -46,138 +67,105 @@ task downloadTomcat() {
             overwrite false
         }
     }
-    doLast{
-        assert sha1(new File(downloadDir, "apache-tomcat-${tomcatVersion}.zip")) ==  new File(downloadDir, "apache-tomcat-${tomcatVersion}.zip.sha1").getText('UTF-8').split(" ")[0]
+    doLast {
+        assert sha1(new File(downloadDir, "apache-tomcat-${tomcatVersion}.zip")) == new File(downloadDir, "apache-tomcat-${tomcatVersion}.zip.sha1").getText('UTF-8').split(" ")[0]
+
+        if (!file("${downloadDir}/apache-tomcat-${tomcatVersion}").exists()) {
+            copy {
+                from zipTree("${downloadDir}/apache-tomcat-${tomcatVersion}.zip")
+                into "${downloadDir}"
+            }
+        }
     }
 }
 
 task downloadSolr() {
-    description = "Unzip Solr and Solr's war (from Maven central) signature"
-    doFirst{
+    description = "Downloads, checks Solr integrity and unzips it"
+    doFirst {
         download {
             src "http://archive.apache.org/dist/lucene/solr/${solrVersion}/solr-${solrVersion}.zip"
             overwrite false
             dest file("${downloadDir}/solr-${solrVersion}.zip")
         }
         download {
-            src "http://archive.apache.org/dist/lucene/solr/${solrVersion}/solr-${solrVersion}.zip.sha1"
-            dest file("${downloadDir}/solr-${solrVersion}.zip.sha1")
+            src "http://archive.apache.org/dist/lucene/solr/${solrVersion}/solr-${solrVersion}.zip.sha512"
+            dest file("${downloadDir}/solr-${solrVersion}.zip.sha512")
             overwrite false
         }
     }
-    doLast{
-        assert sha1(new File(downloadDir, "solr-${solrVersion}.zip")) == new File(downloadDir, "solr-${solrVersion}.zip.sha1").getText('UTF-8').split(" ")[0]
-    }
-}
+    doLast {
+        assert sha512(new File(downloadDir, "solr-${solrVersion}.zip")) == new File(downloadDir, "solr-${solrVersion}.zip.sha512").getText('UTF-8').split(" ")[0]
 
-task downloadIEDriver {
-    doFirst{
-        download{
-            src WINDOWS_IE_DRIVER_URL
-            overwrite false
-            dest ("./src/test-suite/bin/ie-x64.zip")
-        }
-        copy {
-            from zipTree("./src/test-suite/bin/ie-x64.zip")
-            into "./src/test-suite/bin/${browserToTest}-win/"
-        }
-    }
-}
-
-task downloadEdgeDriver(){
-    doFirst{
-        file("./src/test-suite/bin/").mkdir()
-       def winBuildNumber =getWindowsBuildNumber();
-        def url=""
-        if(WINDOWS_EDGE_DRIVER_URL.containsKey(winBuildNumber)){
-            url=WINDOWS_EDGE_DRIVER_URL[winBuildNumber]
-        }
-        if(url.endsWith(".msi")){
-            println ("Your current Selenium Driver is an MSI installer, please \n install it in this path `./src/test-suite/bin` and make sure that you configure properly the `./src/test-suite/test-properties.properties`")
-        }
-        if(!url.isEmpty()){
-            println url
-            download{
-                src url
-                overwrite false
-                dest ("./src/test-suite/bin/edge/MicrosoftWebDriver.exe")
-                acceptAnyCertificate true
+        if (!file("${downloadDir}/solr-${solrVersion}").exists()) {
+            copy {
+                from zipTree("${downloadDir}/solr-${solrVersion}.zip")
+                into "${downloadDir}"
             }
-        }else{
-            println "We could not found a suitable selenium driver for your windows build  ${winBuildNumber}"
-            println "Please go to https://developer.microsoft.com/en-us/microsoft-edge/tools/webdriver/ and download"
-            println "the proper driver version and then configure its location in the `./src/test-suite/test-properties.properties` file "
         }
     }
 }
 
-task downloadChromeDriver(){
-    doFirst{
-        def platform=""
-        if(SystemUtils.IS_OS_WINDOWS){
-            platform = "win32"
-        }else if(SystemUtils.IS_OS_LINUX){
-            platform = "linux64"
-        }else{
-            platform = "mac64"
-        }
-        download{
-            src "https://chromedriver.storage.googleapis.com/${chromeDriverVersion}/chromedriver_${platform}.zip"
+task downloadElasticsearch() {
+    description = "Downloads, checks Elasticsearch integrity and unzips it"
+    doFirst {
+        download {
+            src "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${elasticsearchVersion}.zip"
             overwrite false
-            dest ("./src/test-suite/bin/chromedriver-${testingPlatform}.zip")
+            dest file("${downloadDir}/elasticsearch-${elasticsearchVersion}.zip")
         }
-        copy {
-            from zipTree("./src/test-suite/bin/chromedriver-${testingPlatform}.zip")
-            into "./src/test-suite/bin/${browserToTest}-${testingPlatform}/"
+        download {
+            src "https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-${elasticsearchVersion}.zip.sha512"
+            dest file("${downloadDir}/elasticsearch-${elasticsearchVersion}.zip.sha512")
+            overwrite false
+        }
+    }
+    doLast {
+        assert sha512(new File(downloadDir, "elasticsearch-${elasticsearchVersion}.zip")) == new File(downloadDir, "elasticsearch-${elasticsearchVersion}.zip.sha512").getText('UTF-8').split(" ")[0]
+
+        if (!file("${downloadDir}/elasticsearch-${elasticsearchVersion}").exists()) {
+            copy {
+                from zipTree("${downloadDir}/elasticsearch-${elasticsearchVersion}.zip")
+                into "${downloadDir}"
+            }
         }
     }
 }
 
 task downloadMariaDB4j {
-  doFirst {
-    download {
-      src "http://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.craftercms.mariaDB4j&a=mariaDB4j-app&v=$mariadb4jVersion"
-      overwrite false
-      dest "${downloadDir}/mariaDB4j-app-${mariadb4jVersion}.jar"
+    doFirst {
+        download {
+            src "http://repository.sonatype.org/service/local/artifact/maven/redirect?r=central-proxy&g=org.craftercms.mariaDB4j&a=mariaDB4j-app&v=$mariadb4jVersion"
+            overwrite false
+            dest "${downloadDir}/mariaDB4j-app-${mariadb4jVersion}.jar"
+        }
     }
-  }
 }
 
 def messageDigest(file, alg) {
-  MessageDigest md = MessageDigest.getInstance(alg);
-  FileInputStream fis = new FileInputStream(file.path);
-  byte[] dataBytes = new byte[1024];
-  int nread = 0;
-  while ((nread = fis.read(dataBytes)) != -1) {
-      md.update(dataBytes, 0, nread);
-  };
-  byte[] mdbytes = md.digest();
-  //convert the byte to hex format
-  StringBuffer sb = new StringBuffer("");
-  for (int i = 0; i < mdbytes.length; i++) {
-      sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
-  }
-  return sb.toString()
+    MessageDigest md = MessageDigest.getInstance(alg);
+    FileInputStream fis = new FileInputStream(file.path);
+    byte[] dataBytes = new byte[1024];
+    int nread = 0;
+    while ((nread = fis.read(dataBytes)) != -1) {
+        md.update(dataBytes, 0, nread);
+    };
+    byte[] mdbytes = md.digest();
+    //convert the byte to hex format
+    StringBuffer sb = new StringBuffer("");
+    for (int i = 0; i < mdbytes.length; i++) {
+        sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+    }
+    return sb.toString()
 }
 
 def sha1(file) {
-  messageDigest(file, "SHA1");
+    messageDigest(file, "SHA1");
 }
 
 def sha256(file) {
-  messageDigest(file, "SHA-256");
+    messageDigest(file, "SHA-256");
 }
 
-def getWindowsBuildNumber(){
-  try {
-    def term = "OS Version"
-    Runtime rt = Runtime.getRuntime();
-    Process pr = rt.exec("CMD /C SYSTEMINFO | FINDSTR /B /C:\"" + term + "\"");
-    BufferedReader input = new BufferedReader(new InputStreamReader(pr.getInputStream()));
-    def fullwinVersion = input.readLine()
-    return fullwinVersion.substring(fullwinVersion.lastIndexOf("Build") + 6)
-  } catch (IOException e) {
-    System.err.println(e.getMessage());
-  }
-  return "";
+def sha512(file) {
+    messageDigest(file, "SHA-512")
 }

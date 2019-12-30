@@ -1,3 +1,4 @@
+*.bak
 *.class
 
 # Mobile Tools for Java (J2ME)
@@ -20,6 +21,7 @@ gradle-app.setting
 .tags1
 .tags
 .gradle
+.gradle.log
 *.idea
 *.iml
 dependency-reduced-pom.xml
@@ -30,7 +32,6 @@ crafter-auth-env/
 !src/.gitkeep
 src/
 bundles/
-crafter-delivery-env/
 crafter-authoring
 crafter-delivery
 downloads/
@@ -41,3 +42,8 @@ utils/target
 .vscode/
 selftest-env/*
 plugins
+
+# Docker
+docker/images/build/
+docker/compose/serverless/s3/delivery/config/engine/server-config.properties
+.env
